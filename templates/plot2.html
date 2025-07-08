@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Biểu đồ 2 thuộc tính</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="container py-4">
+    <h2 class="text-center mb-4">
+      📊 Biểu đồ: {{ col1 }} theo nhóm {{ col2 }}
+    </h2>
+    <!-- <img src="data:image/png;base64,{{ plot_url }}" class="img-fluid shadow"> -->
+    <div class="text-center">
+      <img
+        src="data:image/png;base64,{{ plot_url }}"
+        class="img-fluid shadow rounded"
+        alt="plot"
+      />
+    </div>
+    <!-- <h2 class="text-center mb-4">📊 Biểu đồ: {{ col2 }} theo nhóm {{ col1 }}</h2>
+<img src="data:image/png;base64,{{ plot_url }}" class="img-fluid shadow rounded">
+<a href="{{ url_for('data_view') }}" class="btn btn-secondary mt-4">⬅ Quay lại</a> -->
+    <div class="text-center mt-4">
+      <a href="{{ url_for('data_view') }}" class="btn btn-secondary"
+        >⬅ Quay lại bảng dữ liệu</a
+      >
+    </div>
+  </body>
+</html>
