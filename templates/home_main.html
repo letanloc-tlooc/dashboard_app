@@ -30,20 +30,6 @@
   </div>
   {% endif %}
 </div>
-<script>
-  document
-    .getElementById("uploadForm")
-    .addEventListener("submit", function (e) {
-      const file = document.getElementById("fileInput").files[0];
-      if (!file) return;
-
-      const allowedExtensions = ["csv", "xls", "xlsx"];
-      const ext = file.name.split(".").pop().toLowerCase();
-      if (!allowedExtensions.includes(ext)) {
-        e.preventDefault();
-        alert("❌ Chỉ hỗ trợ file .csv, .xls, .xlsx");
-      }
-    });
-</script>
-
-{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %} {% endblock %}

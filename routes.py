@@ -3,7 +3,8 @@ import os
 import pandas as pd
 from werkzeug.utils import secure_filename
 from app import app
-from utils import allowed_file, load_dataframe, generate_base64_plot, describe_column_plot
+from utils.translator import translate_column_names
+from utils.utils import allowed_file, load_dataframe, generate_base64_plot, describe_column_plot
 import io
 import base64
 import matplotlib
@@ -44,6 +45,7 @@ def index():
     table_html = None
     if filepath and os.path.exists(filepath):
         df = load_dataframe(filepath, ext)
+        df.columns = translate_column_names(df.columns)
         table_html = df.head(20).to_html(classes='table table-striped', index=False)
 
     return render_template('home_main.html', table_html=table_html)
@@ -60,6 +62,8 @@ def data_view():
         return redirect(url_for('index'))
 
     df = load_dataframe(filepath, ext)
+     # 🔁 Dịch tên cột sang tiếng Việt
+    df.columns = translate_column_names(df.columns)
 
     return render_template(
         'home_main.html',
@@ -77,7 +81,7 @@ def data_visualization():
         return redirect(url_for('index'))
 
     df = load_dataframe(filepath, ext)
-
+    
     r, d = df.shape
     null_series = df.isnull().sum()
     total_missing = int(null_series.sum())
