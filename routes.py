@@ -11,9 +11,15 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Trang upload
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
+        # Nếu đã có dữ liệu cũ chưa xóa, chặn upload mới
+        if 'filepath' in session:
+            flash("⚠️ Vui lòng xóa dữ liệu cũ trước khi tải lên dữ liệu mới!", "warning")
+            return redirect(url_for('index'))
+        
         f = request.files.get('file')
         if f and allowed_file(f.filename):
             filename = secure_filename(f.filename)
@@ -23,55 +29,70 @@ def index():
 
             session['filepath'] = filepath
             session['file_ext'] = filename.rsplit('.', 1)[1].lower()
+
             return redirect(url_for('data_view'))
 
         flash("❌ Chỉ hỗ trợ file .csv, .xlsx, .xls", "danger")
-    return render_template('index_app.html')
+    return render_template('home_main.html')
 
+# Trang xem bảng dữ liệu
 @app.route('/data_view')
 def data_view():
     filepath = session.get('filepath')
     ext = session.get('file_ext', 'csv')
 
+    if not filepath or not os.path.exists(filepath):
+        flash("⚠️ Không có file nào được tải lên.", "warning")
+        return redirect(url_for('index'))
+
     df = load_dataframe(filepath, ext)
+
+    return render_template(
+        'home_main.html',
+        table_html=df.head(20).to_html(classes='table table-striped', index=False)
+    )
+
+# Trang dashboard thống kê & trực quan
+@app.route('/data_visualization')
+def data_visualization():
+    filepath = session.get('filepath')
+    ext = session.get('file_ext', 'csv')
+
+    if not filepath or not os.path.exists(filepath):
+        flash("⚠️ Không có file nào được tải lên.", "warning")
+        return redirect(url_for('index'))
+
+    df = load_dataframe(filepath, ext)
+
     r, d = df.shape
     null_series = df.isnull().sum()
     total_missing = int(null_series.sum())
     missing_cols = null_series[null_series > 0].to_dict()
     numeric_columns = df.select_dtypes(include='number').columns.tolist()
-    # Thống kê số giá trị duy nhất cho mỗi cột
-    column_uniques = df.nunique().to_dict()
-
-    # Cột phân loại tiềm năng (kể cả số ít giá trị)
-    categorical_columns = [
-        col for col in df.columns
-        # if col not in numeric_columns or df[col].nunique() <= 10
-        if df[col].dtype == 'object' or df[col].nunique() <= 10
-]
-    # Cột định lượng: numeric nhưng loại trừ các cột phân loại
+    categorical_columns = [col for col in df.columns if df[col].dtype == 'object' or df[col].nunique() <= 10]
     quantitative_columns = [col for col in numeric_columns if col not in categorical_columns]
 
     return render_template(
-        'index_app.html',
-        table_html=df.head(10).to_html(classes="table table-bordered", index=False),
+        'data_view_main.html',
         r=r,
         d=d,
         total_missing=total_missing,
         missing_cols=missing_cols,
         columns=df.columns.tolist(),
         numeric_columns=numeric_columns,
-        column_uniques=column_uniques,
-        quantitative_columns=quantitative_columns,
-        categorical_columns=categorical_columns
+        categorical_columns=categorical_columns,
+        quantitative_columns=quantitative_columns
     )
 
-# #Hàm xóa dữ liệu
+# Xóa dữ liệu
 @app.route('/clear_data')
 def clear_data():
     filepath = session.pop('filepath', None)
     if filepath and os.path.exists(filepath):
         os.remove(filepath)
-    flash("✅ Dữ liệu đã được xóa", "success")
+        flash("✅ Dữ liệu đã được xóa.", "success")
+    else:
+        flash("⚠️ Không tìm thấy dữ liệu để xóa.", "warning")
     return redirect(url_for('index'))
 
 #Hàm vẻ biểu đồ 1 thuộc tính

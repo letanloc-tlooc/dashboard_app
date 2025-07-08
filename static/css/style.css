@@ -1,0 +1,109 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #e6fcf8;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background-color: #1e2d2b;
+  color: white;
+  width: 200px;
+  padding: 20px 15px;
+}
+
+.sidebar .logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  transition: 0.2s;
+}
+
+.sidebar a i {
+  margin-right: 10px;
+}
+
+.sidebar a:hover {
+  background-color: #2f4945;
+}
+
+.main {
+  flex-grow: 1;
+  padding: 20px;
+}
+
+.header {
+  background-color: #daf5f0;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.content {
+  background-color: #dbf9f5;
+  padding: 20px;
+  border-radius: 10px;
+  min-height: 300px;
+}
+.table-container {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+}
+
+.table-container table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table-container thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 1;
+}
+/* Responsive */
+@media (max-width: 768px) {
+  .wrapper {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px;
+  }
+
+  .sidebar .logo {
+    display: none;
+  }
+
+  .sidebar a {
+    flex: 1;
+    justify-content: center;
+    margin-bottom: 0;
+  }
+
+  .main {
+    padding: 10px;
+  }
+}

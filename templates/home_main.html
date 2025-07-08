@@ -1,0 +1,86 @@
+{% extends "index.html" %} {% block content %}
+
+<!-- Upload Form -->
+<form
+  id="uploadForm"
+  method="POST"
+  enctype="multipart/form-data"
+  class="row g-2 mb-4"
+>
+  <div class="col-12 col-md-6">
+    <input
+      type="file"
+      name="file"
+      id="fileInput"
+      class="form-control"
+      required
+    />
+  </div>
+  <div class="col-6 col-md-3">
+    <button
+      class="btn btn-success w-100"
+      {%
+      if
+      table_html
+      %}disabled{%
+      endif
+      %}
+    >
+      📥 Tải lên
+    </button>
+  </div>
+  {% if table_html %}
+  <div class="col-6 col-md-3">
+    <button
+      type="button"
+      class="btn btn-danger w-100"
+      data-bs-toggle="modal"
+      data-bs-target="#confirmDeleteModal"
+    >
+      ❌ Xóa dữ liệu
+    </button>
+  </div>
+  {% endif %}
+</form>
+
+{% if table_html %}
+<!-- Bảng dữ liệu -->
+<div class="table-container" style="max-height: 600px; overflow-y: auto">
+  {{ table_html | safe }}
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div
+  class="modal fade"
+  id="confirmDeleteModal"
+  tabindex="-1"
+  aria-labelledby="deleteModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-danger">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteModalLabel">
+          🚨 Xác nhận xóa dữ liệu
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        Bạn có chắc chắn muốn <strong>xóa dữ liệu đã tải lên</strong> không?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Hủy
+        </button>
+        <a href="{{ url_for('clear_data') }}" class="btn btn-danger"
+          >Xác nhận xóa</a
+        >
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %} {% endblock %}
