@@ -35,7 +35,7 @@ def index():
         session['filepath'] = filepath
         session['file_ext'] = filename.rsplit('.', 1)[1].lower()
 
-        flash("✅ Dữ liệu đã được tải lên và thay thế thành công.", "success")
+        flash("✅ Dữ liệu đã được tải lên thành công.", "success")
         return redirect(url_for('index'))
 
     # GET method — nếu đã có dữ liệu, hiển thị bảng
