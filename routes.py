@@ -15,25 +15,39 @@ import seaborn as sns
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        # Nếu đã có dữ liệu cũ chưa xóa, chặn upload mới
-        if 'filepath' in session:
-            flash("⚠️ Vui lòng xóa dữ liệu cũ trước khi tải lên dữ liệu mới!", "warning")
-            return redirect(url_for('index'))
-        
         f = request.files.get('file')
-        if f and allowed_file(f.filename):
-            filename = secure_filename(f.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-            f.save(filepath)
+        if not f or not allowed_file(f.filename):
+            flash("❌ Chỉ hỗ trợ file .csv, .xlsx, .xls", "danger")
+            return redirect(url_for('index'))
 
-            session['filepath'] = filepath
-            session['file_ext'] = filename.rsplit('.', 1)[1].lower()
+        filename = secure_filename(f.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-            return redirect(url_for('data_view'))
+        # Nếu đã có file cũ, xóa đi
+        old_path = session.pop('filepath', None)
+        if old_path and os.path.exists(old_path):
+            os.remove(old_path)
 
-        flash("❌ Chỉ hỗ trợ file .csv, .xlsx, .xls", "danger")
-    return render_template('home_main.html')
+        f.save(filepath)
+
+        # Cập nhật session mới
+        session['filepath'] = filepath
+        session['file_ext'] = filename.rsplit('.', 1)[1].lower()
+
+        flash("✅ Dữ liệu đã được tải lên và thay thế thành công.", "success")
+        return redirect(url_for('index'))
+
+    # GET method — nếu đã có dữ liệu, hiển thị bảng
+    filepath = session.get('filepath')
+    ext = session.get('file_ext')
+    table_html = None
+    if filepath and os.path.exists(filepath):
+        df = load_dataframe(filepath, ext)
+        table_html = df.head(20).to_html(classes='table table-striped', index=False)
+
+    return render_template('home_main.html', table_html=table_html)
+
 
 # Trang xem bảng dữ liệu
 @app.route('/data_view')
