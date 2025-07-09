@@ -1,35 +1,91 @@
 {% extends "index.html" %} {% block content %}
-<div class="container py-4">
-  <!-- Upload Form -->
-  <form
-    id="uploadForm"
-    method="POST"
-    enctype="multipart/form-data"
-    action="{{ url_for('index') }}"
-    class="row g-2 mb-4"
-  >
-    <div class="col-12 col-md-6">
-      <input
-        type="file"
-        name="file"
-        id="fileInput"
-        class="form-control"
-        accept=".csv, .xls, .xlsx"
-        required
-      />
-    </div>
-    <div class="col-6 col-md-3">
-      <button class="btn btn-success w-100">📥 Tải lên</button>
-    </div>
-  </form>
 
-  {% if table_html %}
-  <!-- Bảng dữ liệu -->
-  <div class="table-container" style="max-height: 600px; overflow-y: auto">
-    {{ table_html | safe }}
-  </div>
-  {% endif %}
+<!-- THÔNG BÁO FLASH -->
+{% with messages = get_flashed_messages(with_categories=true) %} {% if messages
+%} {% for category, message in messages %}
+<div
+  class="alert alert-{{ category }} alert-dismissible fade show"
+  role="alert"
+>
+  {{ message }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
-{% block scripts %}
+{% endfor %} {% endif %} {% endwith %}
+
+<!-- FORM TẢI LÊN FILE -->
+<form
+  id="uploadForm"
+  method="POST"
+  action="/"
+  enctype="multipart/form-data"
+  class="row g-2 mb-4"
+>
+  <div class="col-12 col-md-8">
+    <input
+      type="file"
+      name="file"
+      id="fileInput"
+      class="form-control"
+      accept=".csv,.xls,.xlsx"
+      required
+    />
+  </div>
+  <div class="col-12 col-md-4 d-grid">
+    <button type="submit" class="btn btn-success">📤 Tải lên</button>
+  </div>
+</form>
+
+<!-- HIỂN THỊ BẢNG DỮ LIỆU -->
+{% if table_html %}
+<div
+  class="table-responsive mb-4"
+  style="max-height: 600px; overflow-y: auto; max-width: 100%; overflow-x: auto"
+>
+  {{ table_html | safe }}
+</div>
+
+<!-- PHÂN TRANG -->
+{% if total_pages > 1 %}
+<nav>
+  <ul
+    class="custom-pagination d-flex justify-content-center list-unstyled gap-2"
+  >
+    <!-- Trang trước -->
+    {% if current_page > 1 %}
+    <li>
+      <a
+        class="circle-page"
+        href="{{ url_for('data_view', page=current_page - 1) }}"
+        >❮</a
+      >
+    </li>
+    {% endif %}
+
+    <!-- Danh sách các trang -->
+    {% set start_page = current_page - 4 if current_page > 5 else 1 %} {% set
+    end_page = start_page + 9 if start_page + 9 < total_pages else total_pages
+    %} {% for page_num in range(start_page, end_page + 1) %}
+    <li>
+      <a
+        class="circle-page {% if page_num == current_page %}active{% endif %}"
+        href="{{ url_for('data_view', page=page_num) }}"
+        >{{ page_num }}</a
+      >
+    </li>
+    {% endfor %}
+
+    <!-- Trang sau -->
+    {% if current_page < total_pages %}
+    <li>
+      <a
+        class="circle-page"
+        href="{{ url_for('data_view', page=current_page + 1) }}"
+        >❯</a
+      >
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %} {% endif %} {% endblock %} {% block scripts %}
 <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
-{% endblock %} {% endblock %}
+{% endblock %}

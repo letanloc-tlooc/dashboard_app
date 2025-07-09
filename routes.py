@@ -1,3 +1,4 @@
+import uuid
 from flask import request, render_template, redirect, url_for, flash, session
 import os
 import pandas as pd
@@ -12,62 +13,76 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Trang upload
+# Route xử lý việc upload file
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    # Nếu người dùng gửi biểu mẫu (method POST)
     if request.method == 'POST':
+        # Lấy file từ form upload
         f = request.files.get('file')
-        if not f or not allowed_file(f.filename):
-            flash("❌ Chỉ hỗ trợ file .csv, .xlsx, .xls", "danger")
-            return redirect(url_for('index'))
 
-        filename = secure_filename(f.filename)
+        # Tạo tên file duy nhất bằng UUID để tránh trùng lặp tên file
+        filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        # Tạo thư mục upload nếu chưa tồn tại
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-        # Nếu đã có file cũ, xóa đi
-        old_path = session.pop('filepath', None)
+        # Lấy đường dẫn file cũ từ session (nếu có)
+        old_path = session.get('filepath')
+        # Nếu tồn tại file cũ, tiến hành xóa nó để không lưu nhiều file rác
         if old_path and os.path.exists(old_path):
-            os.remove(old_path)
+            try:
+                os.remove(old_path)
+            except Exception as e:
+                print("Không thể xóa file cũ:", e)
 
+        # Lưu file mới vào thư mục upload
         f.save(filepath)
 
-        # Cập nhật session mới
+        # Lưu đường dẫn file và phần mở rộng vào session để dùng ở các bước tiếp theo
         session['filepath'] = filepath
-        session['file_ext'] = filename.rsplit('.', 1)[1].lower()
+        session['file_ext'] = filename.rsplit('.', 1)[1].lower()  # lấy phần mở rộng file (ví dụ: csv, xlsx)
 
+        # Thông báo flash lên giao diện web là upload thành công
         flash("✅ Dữ liệu đã được tải lên thành công.", "success")
-        return redirect(url_for('index'))
 
-    # GET method — nếu đã có dữ liệu, hiển thị bảng
-    filepath = session.get('filepath')
-    ext = session.get('file_ext')
-    table_html = None
-    if filepath and os.path.exists(filepath):
-        df = load_dataframe(filepath, ext)
-        df.columns = translate_column_names(df.columns)
-        table_html = df.head(20).to_html(classes='table table-striped', index=False)
+        # Chuyển hướng sang trang hiển thị dữ liệu với trang đầu tiên là page=1
+        return redirect(url_for('data_view', page=1))
 
-    return render_template('home_main.html', table_html=table_html)
+    # Nếu là GET request: hiển thị giao diện không có bảng (chưa upload file)
+    return render_template('home_main.html', table_html=None, current_page=0, total_pages=0)
 
 
-# Trang xem bảng dữ liệu
+# Route hiển thị dữ liệu đã upload (sau khi nhấn upload thành công)
 @app.route('/data_view')
 def data_view():
+    # Lấy đường dẫn file và phần mở rộng từ session
     filepath = session.get('filepath')
-    ext = session.get('file_ext', 'csv')
+    ext = session.get('file_ext', 'csv')  # mặc định là csv nếu không có
 
-    if not filepath or not os.path.exists(filepath):
-        flash("⚠️ Không có file nào được tải lên.", "warning")
-        return redirect(url_for('index'))
-
+    # Đọc file thành DataFrame (hàm load_dataframe cần được định nghĩa ở nơi khác)
     df = load_dataframe(filepath, ext)
-     # 🔁 Dịch tên cột sang tiếng Việt
-    df.columns = translate_column_names(df.columns)
 
+    # Phân trang dữ liệu
+    page = int(request.args.get('page', 1))  # Lấy số trang hiện tại từ query string (mặc định là 1)
+    per_page = 100  # Số dòng hiển thị mỗi trang
+    total_pages = (len(df) - 1) // per_page + 1  # Tính tổng số trang
+
+    # Cắt DataFrame theo trang hiện tại
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_df = df.iloc[start:end]
+
+    # Chuyển DataFrame thành bảng HTML để hiển thị trong giao diện
+    table_html = paginated_df.to_html(classes='table table-striped', index=False)
+
+    # Trả về template kèm bảng và thông tin phân trang
     return render_template(
         'home_main.html',
-        table_html=df.head(20).to_html(classes='table table-striped', index=False)
+        table_html=table_html,
+        current_page=page,
+        total_pages=total_pages
     )
 
 # Trang dashboard thống kê & trực quan
@@ -102,16 +117,7 @@ def data_visualization():
         quantitative_columns=quantitative_columns
     )
 
-# Xóa dữ liệu
-@app.route('/clear_data')
-def clear_data():
-    filepath = session.pop('filepath', None)
-    if filepath and os.path.exists(filepath):
-        os.remove(filepath)
-        flash("✅ Dữ liệu đã được xóa.", "success")
-    else:
-        flash("⚠️ Không tìm thấy dữ liệu để xóa.", "warning")
-    return redirect(url_for('index'))
+
 
 #Hàm vẻ biểu đồ 1 thuộc tính
 @app.route('/chart', methods=['POST'])
