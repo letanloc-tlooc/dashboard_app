@@ -64,6 +64,11 @@ def data_view():
     # Đọc file thành DataFrame (hàm load_dataframe cần được định nghĩa ở nơi khác)
     df = load_dataframe(filepath, ext)
 
+    # 👉 CHẮC CHẮN df là DataFrame trước khi tính len
+    if not hasattr(df, "__len__"):
+        flash("❌ Dữ liệu không hợp lệ!", "danger")
+        return redirect(url_for('index'))
+
     # Phân trang dữ liệu
     page = int(request.args.get('page', 1))  # Lấy số trang hiện tại từ query string (mặc định là 1)
     per_page = 100  # Số dòng hiển thị mỗi trang
