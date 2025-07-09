@@ -11,7 +11,7 @@ def allowed_file(filename):
 
 def load_dataframe(filepath, ext):
     if not filepath or not os.path.exists(filepath):
-        flash("Không tìm thấy file!", "danger")
+        # flash("Không tìm thấy file!", "danger")
         return redirect(url_for('index'))
 
     if ext == 'csv':
