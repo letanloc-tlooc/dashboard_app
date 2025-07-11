@@ -1,10 +1,10 @@
 import uuid
-from flask import request, render_template, redirect, url_for, flash, session
+from flask import request, render_template, redirect, url_for, flash, session, jsonify
 import os
 import pandas as pd
 from werkzeug.utils import secure_filename
 from app import app
-from utils.translator import translate_column_names
+# from utils.translator import translate_column_names
 from utils.utils import allowed_file, load_dataframe, generate_base64_plot, describe_column_plot
 import io
 import base64
@@ -16,79 +16,113 @@ import seaborn as sns
 # Route xử lý việc upload file
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    # Nếu người dùng gửi biểu mẫu (method POST)
     if request.method == 'POST':
-        # Lấy file từ form upload
         f = request.files.get('file')
+        if not f:
+            flash("⚠️ Chưa chọn file!", "warning")
+            return render_template('home_main.html')
 
-        # Tạo tên file duy nhất bằng UUID để tránh trùng lặp tên file
+        # kiểm tra đuôi
+        if f.filename.rsplit('.', 1)[-1].lower() not in ('csv', 'xlsx', 'xls'):
+            flash("❌ Chỉ hỗ trợ CSV / Excel", "danger")
+            return render_template('home_main.html')
+
+        # xoá file cũ (nếu có)
+        old_path = session.pop('filepath', None)
+        if old_path and os.path.exists(old_path):
+            os.remove(old_path)
+
+        # lưu file mới
         filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-        # Tạo thư mục upload nếu chưa tồn tại
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-        # Lấy đường dẫn file cũ từ session (nếu có)
-        old_path = session.get('filepath')
-        # Nếu tồn tại file cũ, tiến hành xóa nó để không lưu nhiều file rác
-        if old_path and os.path.exists(old_path):
-            try:
-                os.remove(old_path)
-            except Exception as e:
-                print("Không thể xóa file cũ:", e)
-
-        # Lưu file mới vào thư mục upload
         f.save(filepath)
 
-        # Lưu đường dẫn file và phần mở rộng vào session để dùng ở các bước tiếp theo
+        # lưu session
         session['filepath'] = filepath
-        session['file_ext'] = filename.rsplit('.', 1)[1].lower()  # lấy phần mở rộng file (ví dụ: csv, xlsx)
+        session['file_ext'] = filename.rsplit('.', 1)[1].lower()
 
-        # Thông báo flash lên giao diện web là upload thành công
-        flash("✅ Dữ liệu đã được tải lên thành công.", "success")
+        # front‑end sẽ gọi /api/data nên chỉ render khung
+        flash("✅ Tải lên thành công.", "success")
+        return render_template('home_main.html')
 
-        # Chuyển hướng sang trang hiển thị dữ liệu với trang đầu tiên là page=1
-        return redirect(url_for('data_view', page=1))
-
-    # Nếu là GET request: hiển thị giao diện không có bảng (chưa upload file)
-    return render_template('home_main.html', table_html=None, current_page=0, total_pages=0)
+    # GET – chỉ render khung
+    return render_template('home_main.html')
 
 
-# Route hiển thị dữ liệu đã upload (sau khi nhấn upload thành công)
-@app.route('/data_view')
-def data_view():
-    # Lấy đường dẫn file và phần mở rộng từ session
+# ---------- API: bảng dữ liệu ----------
+@app.route('/api/data')
+def api_data():
     filepath = session.get('filepath')
-    ext = session.get('file_ext', 'csv')  # mặc định là csv nếu không có
+    if not filepath or not os.path.exists(filepath):
+        return jsonify({'error': 'No file'}), 404
 
-    # Đọc file thành DataFrame (hàm load_dataframe cần được định nghĩa ở nơi khác)
+    ext = session.get('file_ext', 'csv')
     df = load_dataframe(filepath, ext)
 
-    # 👉 CHẮC CHẮN df là DataFrame trước khi tính len
-    if not hasattr(df, "__len__"):
-        flash("❌ Dữ liệu không hợp lệ!", "danger")
-        return redirect(url_for('index'))
+    page      = int(request.args.get('page', 1))
+    per_page  = 100
+    total_pg  = (len(df)-1)//per_page + 1
 
-    # Phân trang dữ liệu
-    page = int(request.args.get('page', 1))  # Lấy số trang hiện tại từ query string (mặc định là 1)
-    per_page = 100  # Số dòng hiển thị mỗi trang
-    total_pages = (len(df) - 1) // per_page + 1  # Tính tổng số trang
+    start = (page-1) * per_page
+    end   = start + per_page
+    html  = df.iloc[start:end].to_html(classes='table table-striped', index=False)
 
-    # Cắt DataFrame theo trang hiện tại
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_df = df.iloc[start:end]
+    return jsonify({
+        'html': html,
+        'current_page': page,
+        'total_pages': total_pg
+    })
 
-    # Chuyển DataFrame thành bảng HTML để hiển thị trong giao diện
-    table_html = paginated_df.to_html(classes='table table-striped', index=False)
 
-    # Trả về template kèm bảng và thông tin phân trang
-    return render_template(
-        'home_main.html',
-        table_html=table_html,
-        current_page=page,
-        total_pages=total_pages
-    )
+# ---------- API: thông tin cột thiếu ----------
+@app.route('/api/missing-info')
+def api_missing_info():
+    filepath = session.get('filepath')
+    if not filepath or not os.path.exists(filepath):
+        return jsonify([])
+
+    ext = session.get('file_ext', 'csv')
+    df  = load_dataframe(filepath, ext)
+
+    nulls = df.isnull().sum()
+    res   = [dict(column=c, missing=int(nulls[c]),
+                  numeric=pd.api.types.is_numeric_dtype(df[c]))
+             for c in df.columns if nulls[c] > 0]
+    return jsonify(res)
+
+
+# ---------- API: xử lý dữ liệu thiếu ----------
+@app.route('/api/handle-missing', methods=['POST'])
+def api_handle_missing():
+    filepath = session.get('filepath')
+    if not filepath or not os.path.exists(filepath):
+        return jsonify({'error': 'No file'}), 404
+
+    ext = session.get('file_ext', 'csv')
+    df  = load_dataframe(filepath, ext)
+
+    nulls = df.isnull().sum()
+    miss_cols = nulls[nulls > 0].index
+
+    for col in miss_cols:
+        strategy = request.form.get(f'strategy_{col}')
+        if strategy == 'drop':
+            df = df[df[col].notnull()]
+        elif strategy == 'mean' and pd.api.types.is_numeric_dtype(df[col]):
+            df[col].fillna(df[col].mean(), inplace=True)
+        elif strategy == 'median' and pd.api.types.is_numeric_dtype(df[col]):
+            df[col].fillna(df[col].median(), inplace=True)
+
+    # ghi đè
+    if ext == 'csv':
+        df.to_csv(filepath, index=False)
+    else:
+        df.to_excel(filepath, index=False)
+
+    return jsonify({'message': '✅ Đã xử lý dữ liệu thiếu.'})
+
+
 
 # Trang dashboard thống kê & trực quan
 @app.route('/data_visualization')
@@ -261,32 +295,5 @@ def correlation_heatmap():
 
     return render_template('heatmap.html', plot_url=plot_url)
 
-@app.route('/handle_missing_columns', methods=['POST'])
-def handle_missing_columns():
-    filepath = session.get('filepath')
-    ext = session.get('file_ext', 'csv')
-    df = load_dataframe(filepath,ext)
-    
-    # Xử lý từng cột dựa vào lựa chọn
-    null_series = df.isnull().sum()
-    missing_cols = null_series[null_series > 0].index.tolist()
 
-    for col in missing_cols:
-        strategy = request.form.get(f'strategy_{col}')
-        if strategy == 'drop':
-            df = df[df[col].notnull()]
-        elif strategy == 'mean' and pd.api.types.is_numeric_dtype(df[col]):
-            df[col].fillna(df[col].mean(), inplace=True)
-        elif strategy == 'median' and pd.api.types.is_numeric_dtype(df[col]):
-            df[col].fillna(df[col].median(), inplace=True)
-        # else: không làm gì
-
-    # Ghi đè lại
-    if ext == 'csv':
-        df.to_csv(filepath, index=False)
-    else:
-        df.to_excel(filepath, index=False)
-
-    flash("✅ Dữ liệu đã được xử lý theo lựa chọn của bạn.", "success")
-    return redirect(url_for('data_view'))
 
