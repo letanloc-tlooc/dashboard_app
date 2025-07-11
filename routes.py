@@ -15,7 +15,7 @@ import seaborn as sns
 
 # Route xử lý việc upload file
 @app.route('/', methods=['GET', 'POST'])
-def index():
+def index(): 
     if request.method == 'POST':
         f = request.files.get('file')
         if not f:
@@ -42,9 +42,11 @@ def index():
         session['filepath'] = filepath
         session['file_ext'] = filename.rsplit('.', 1)[1].lower()
 
+        
+
         # front‑end sẽ gọi /api/data nên chỉ render khung
-        flash("✅ Tải lên thành công.", "success")
-        return render_template('home_main.html')
+        # flash("✅ Tải lên thành công.", "success")
+        # return render_template('home_main.html')
 
     # GET – chỉ render khung
     return render_template('home_main.html')
@@ -53,6 +55,7 @@ def index():
 # ---------- API: bảng dữ liệu ----------
 @app.route('/api/data')
 def api_data():
+    
     filepath = session.get('filepath')
     if not filepath or not os.path.exists(filepath):
         return jsonify({'error': 'No file'}), 404
@@ -68,10 +71,17 @@ def api_data():
     end   = start + per_page
     html  = df.iloc[start:end].to_html(classes='table table-striped', index=False)
 
+    
+
     return jsonify({
         'html': html,
         'current_page': page,
-        'total_pages': total_pg
+        'total_pages': total_pg,
+        'stats' : {
+            'rows'   : int(df.shape[0]),
+            'cols'   : int(df.shape[1]),
+            'missing': int(df.isnull().sum().sum())
+        }
     })
 
 
@@ -122,8 +132,6 @@ def api_handle_missing():
 
     return jsonify({'message': '✅ Đã xử lý dữ liệu thiếu.'})
 
-
-
 # Trang dashboard thống kê & trực quan
 @app.route('/data_visualization')
 def data_visualization():
@@ -136,7 +144,7 @@ def data_visualization():
 
     df = load_dataframe(filepath, ext)
     
-    r, d = df.shape
+    
     null_series = df.isnull().sum()
     total_missing = int(null_series.sum())
     missing_cols = null_series[null_series > 0].to_dict()
@@ -146,8 +154,6 @@ def data_visualization():
 
     return render_template(
         'data_view_main.html',
-        r=r,
-        d=d,
         total_missing=total_missing,
         missing_cols=missing_cols,
         columns=df.columns.tolist(),

@@ -38,12 +38,13 @@
       </button>
     </div>
   </form>
-
+  <!-- THỐNG KÊ -->
+  <div id="data-stats" class="mb-3"></div>
   <!-- BẢNG DỮ LIỆU -->
   <div
     id="table-container"
     class="table-responsive mb-4"
-    style="max-height: 600px; overflow-y: auto; overflow-x: auto"
+    style="max-height: 400px; overflow-y: auto; overflow-x: auto"
   >
     {% if table_html %} {{ table_html | safe }} {% endif %}
   </div>

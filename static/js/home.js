@@ -21,7 +21,21 @@ function loadPage(page = 1) {
     .then((data) => {
       document.getElementById("table-container").innerHTML = data.html;
       renderPagination(data.current_page, data.total_pages);
+    // 👉 Hiển thị stats nếu có
+      if (data.stats) {
+        const infoBox = document.getElementById("data-stats");
+        if (infoBox) {
+          infoBox.innerHTML = `
+            <div class="alert alert-info">
+              <strong>📊 Thống kê dữ liệu:</strong><br/>
+              🔢 Số dòng: <strong>${data.stats.rows}</strong> |
+              📏 Số cột: <strong>${data.stats.cols}</strong> |
+              ⚠️ Số ô thiếu: <strong>${data.stats.missing}</strong>
+            </div>`;
+        }
+      }
     })
+    
     .catch(() => {
       document.getElementById("table-container").innerHTML = "<p class='text-danger'></p>";
       document.getElementById("pagination").innerHTML = "";
