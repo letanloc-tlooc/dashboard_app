@@ -12,7 +12,7 @@
           <option value="{{ col }}">{{ col }}</option>
           {% endfor %}
         </select>
-        <canvas id="myChart" height="300"></canvas>
+        <div id="myChart" style="height: 300px"></div>
       </div>
     </div>
 
@@ -31,6 +31,10 @@
   </div>
 </div>
 {% endblock %} {% block scripts %}
-<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<!-- Google Charts CDN -->
+<script
+  type="text/javascript"
+  src="https://www.gstatic.com/charts/loader.js"
+></script>
+<script src="{{ url_for('static', filename='js/Chart.js') }}"></script>
 {% endblock %}
