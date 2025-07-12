@@ -1,17 +1,14 @@
 import uuid
-from flask import request, render_template, redirect, url_for, flash, session, jsonify
+from flask import request, render_template, redirect, url_for, flash, session
 import os
 import pandas as pd
 from werkzeug.utils import secure_filename
 from app import app
 # from utils.translator import translate_column_names
-from utils.utils import allowed_file, load_dataframe, generate_base64_plot, describe_column_plot
+from utils.utils import *
+from api import *
 import io
-import base64
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 
 # Route xử lý việc upload file
 @app.route('/', methods=['GET', 'POST'])
@@ -52,147 +49,16 @@ def index():
     return render_template('home_main.html')
 
 
-# ---------- API: bảng dữ liệu ----------
-@app.route('/api/data')
-def api_data():
-    
+@app.route('/data-view')
+def data_view():
     filepath = session.get('filepath')
-    if not filepath or not os.path.exists(filepath):
-        return jsonify({'error': 'No file'}), 404
-
     ext = session.get('file_ext', 'csv')
     df = load_dataframe(filepath, ext)
-
-    page      = int(request.args.get('page', 1))
-    per_page  = 100
-    total_pg  = (len(df)-1)//per_page + 1
-
-    start = (page-1) * per_page
-    end   = start + per_page
-    html  = df.iloc[start:end].to_html(classes='table table-striped', index=False)
-
-    
-
-    return jsonify({
-        'html': html,
-        'current_page': page,
-        'total_pages': total_pg,
-        'stats' : {
-            'rows'   : int(df.shape[0]),
-            'cols'   : int(df.shape[1]),
-            'missing': int(df.isnull().sum().sum())
-        }
-    })
-
-
-# ---------- API: thông tin cột thiếu ----------
-@app.route('/api/missing-info')
-def api_missing_info():
-    filepath = session.get('filepath')
-    if not filepath or not os.path.exists(filepath):
-        return jsonify([])
-
-    ext = session.get('file_ext', 'csv')
-    df  = load_dataframe(filepath, ext)
-
-    nulls = df.isnull().sum()
-    res   = [dict(column=c, missing=int(nulls[c]),
-                  numeric=pd.api.types.is_numeric_dtype(df[c]))
-             for c in df.columns if nulls[c] > 0]
-    return jsonify(res)
-
-
-# ---------- API: xử lý dữ liệu thiếu ----------
-@app.route('/api/handle-missing', methods=['POST'])
-def api_handle_missing():
-    filepath = session.get('filepath')
-    if not filepath or not os.path.exists(filepath):
-        return jsonify({'error': 'No file'}), 404
-
-    ext = session.get('file_ext', 'csv')
-    df  = load_dataframe(filepath, ext)
-
-    nulls = df.isnull().sum()
-    miss_cols = nulls[nulls > 0].index
-
-    for col in miss_cols:
-        strategy = request.form.get(f'strategy_{col}')
-        if strategy == 'drop':
-            df = df[df[col].notnull()]
-        elif strategy == 'mean' and pd.api.types.is_numeric_dtype(df[col]):
-            df[col].fillna(df[col].mean(), inplace=True)
-        elif strategy == 'median' and pd.api.types.is_numeric_dtype(df[col]):
-            df[col].fillna(df[col].median(), inplace=True)
-
-    # ghi đè
-    if ext == 'csv':
-        df.to_csv(filepath, index=False)
-    else:
-        df.to_excel(filepath, index=False)
-
-    return jsonify({'message': '✅ Đã xử lý dữ liệu thiếu.'})
-
-# Trang dashboard thống kê & trực quan
-@app.route('/data_visualization')
-def data_visualization():
-    filepath = session.get('filepath')
-    ext = session.get('file_ext', 'csv')
-
-    if not filepath or not os.path.exists(filepath):
-        flash("⚠️ Không có file nào được tải lên.", "warning")
-        return redirect(url_for('index'))
-
-    df = load_dataframe(filepath, ext)
-    
-    
-    null_series = df.isnull().sum()
-    total_missing = int(null_series.sum())
-    missing_cols = null_series[null_series > 0].to_dict()
+    columns = df.columns.tolist()
     numeric_columns = df.select_dtypes(include='number').columns.tolist()
-    categorical_columns = [col for col in df.columns if df[col].dtype == 'object' or df[col].nunique() <= 10]
-    quantitative_columns = [col for col in numeric_columns if col not in categorical_columns]
-
-    return render_template(
-        'data_view_main.html',
-        total_missing=total_missing,
-        missing_cols=missing_cols,
-        columns=df.columns.tolist(),
-        numeric_columns=numeric_columns,
-        categorical_columns=categorical_columns,
-        quantitative_columns=quantitative_columns
-    )
+    return render_template('char.html', columns=columns, numeric_columns=numeric_columns)
 
 
-
-#Hàm vẻ biểu đồ 1 thuộc tính
-@app.route('/chart', methods=['POST'])
-def chart():
-    col = request.form.get('selected_col') #chọn thuộc tính
-    filepath = session.get('filepath')
-    ext = session.get('file_ext', 'csv')
-    df = load_dataframe(filepath, ext)
-
-    data_count = df[col].value_counts().nlargest(10) #hiển thị 10 dòng đầu 
-    labels = data_count.index.tolist()
-    values = data_count.values.tolist()
-
-    return render_template('char.html', labels=labels, values=values, column=col)
-
-@app.route('/describe', methods=['POST'])
-def describe_chart():
-    col = request.form.get('selected_col')
-    filepath = session.get('filepath')
-    ext = session.get('file_ext', 'csv')
-    df = load_dataframe(filepath, ext)
-
-    if col not in df.select_dtypes(include='number').columns:
-        flash("Không thể thực hiện trực quan hóa cho thuộc tính không phải số.", "warning")
-        return redirect(url_for('data_view'))
-
-    desc = df[col].describe()
-    table_data = list(desc.items())  # [(count, xxx), (mean, xxx), ...]
-
-    return render_template('describe.html', table_data=table_data, col=col)
 
 @app.route('/plot_categorical', methods=['POST'])
 def plot_categorical():
