@@ -117,3 +117,21 @@ def api_describe():
             {'label': label, 'value': float(value)} for label, value in desc.items()
         ]
     })
+
+# ---------- API: Tương quan ----------
+@app.route('/api/corr')
+def api_corr():
+    filepath = session.get('filepath')
+    ext = session.get('file_ext', 'csv')
+    df = load_dataframe(filepath, ext)
+
+    numeric_df = df.select_dtypes(include='number')
+    if numeric_df.empty:
+        return jsonify({'error': 'Không có thuộc tính số để tính tương quan.'}), 400
+
+    corr = numeric_df.corr().round(2)
+    matrix = corr.to_dict()
+    return jsonify({
+        'labels': corr.columns.tolist(),
+        'matrix': matrix  # dict[col1][col2] = value
+    })

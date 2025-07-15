@@ -71,3 +71,44 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 });
+document.addEventListener('DOMContentLoaded', () => {
+  const corrTable = document.getElementById('corrTable');
+
+  fetch('/api/corr')
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        corrTable.innerHTML = `<tr><td colspan="999" class="text-danger">${data.error}</td></tr>`;
+        return;
+      }
+
+      const labels = data.labels;
+      const matrix = data.matrix;
+
+      // Tạo header
+      let html = '<thead><tr><th></th>';
+      labels.forEach(col => html += `<th>${col}</th>`);
+      html += '</tr></thead><tbody>';
+
+      // Tạo body
+      labels.forEach(row => {
+        html += `<tr><th>${row}</th>`;
+        labels.forEach(col => {
+          const value = matrix[row][col];
+          let color = 'transparent';
+          if (value >= 0.75) color = '#d1e7dd';       // xanh
+          else if (value <= -0.75) color = '#f8d7da'; // đỏ
+          else if (Math.abs(value) >= 0.4) color = '#fff3cd'; // vàng
+
+          html += `<td style="background-color:${color}">${value.toFixed(2)}</td>`;
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+      corrTable.innerHTML = html;
+    })
+    .catch(err => {
+      corrTable.innerHTML = `<tr><td colspan="999" class="text-danger">Lỗi tải bảng tương quan</td></tr>`;
+    });
+});
