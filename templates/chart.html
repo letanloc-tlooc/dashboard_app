@@ -8,9 +8,9 @@
       <div class="bg-light p-3 rounded h-100">
         <label class="form-label">📌 Chọn thuộc tính để vẽ biểu đồ:</label>
         <select id="chartCol" class="form-select mb-2">
-          {% for col in columns[1:] %}
+          {% for col in columns %}
           <!-- <option value="{{ col }}">{{ col }}</option> -->
-          <option value="{{ col }}" {% if loop.index0 == 1 %}selected{% endif %}>{{ col }}</option>
+          <option value="{{ col }}" {% if loop.index0 == 2 %}selected{% endif %}>{{ col }}</option>
           {% endfor %}
         </select>
         <canvas id="myChart" height="300"></canvas>
