@@ -1,0 +1,36 @@
+{% extends "index.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <h3 class="mb-4 text-center">📊 Website Dashboard</h3>
+
+  <div class="row">
+    <!-- Biểu đồ -->
+    <div class="col-md-6">
+      <div class="bg-light p-3 rounded h-100">
+        <label class="form-label">📌 Chọn thuộc tính để vẽ biểu đồ:</label>
+        <select id="chartCol" class="form-select mb-2">
+          {% for col in columns %}
+          <option value="{{ col }}">{{ col }}</option>
+          {% endfor %}
+        </select>
+        <canvas id="myChart" height="300"></canvas>
+      </div>
+    </div>
+
+    <!-- Thống kê -->
+    <div class="col-md-6">
+      <div class="bg-light p-3 rounded h-100">
+        <label class="form-label">📌 Chọn thuộc tính số để thống kê:</label>
+        <select id="descCol" class="form-select mb-2">
+          {% for col in numeric_columns %}
+          <option value="{{ col }}">{{ col }}</option>
+          {% endfor %}
+        </select>
+        <div id="describeBox" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+{% endblock %}

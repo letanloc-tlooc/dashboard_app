@@ -1,14 +1,20 @@
-google.charts.load('current', { packages: ['corechart'] });
-
 document.addEventListener("DOMContentLoaded", () => {
   const chartCol = document.getElementById("chartCol");
   const descCol = document.getElementById("descCol");
+  const ctx = document.getElementById("myChart")?.getContext("2d");
+  let chartInstance = null;
 
+  // Gọi ban đầu
   if (chartCol) fetchChart(chartCol.value);
   if (descCol) fetchDescribe(descCol.value);
 
-  chartCol?.addEventListener("change", () => fetchChart(chartCol.value));
-  descCol?.addEventListener("change", () => fetchDescribe(descCol.value));
+  chartCol?.addEventListener("change", () => {
+    fetchChart(chartCol.value);
+  });
+
+  descCol?.addEventListener("change", () => {
+    fetchDescribe(descCol.value);
+  });
 
   function fetchChart(col) {
     fetch("/api/chart", {
@@ -16,24 +22,27 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `selected_col=${encodeURIComponent(col)}`
     })
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.error) return alert(data.error);
-        google.charts.setOnLoadCallback(() => {
-          const chartData = [['Giá trị', 'Tần suất']];
-          for (let i = 0; i < data.labels.length; i++) {
-            chartData.push([data.labels[i], data.values[i]]);
+
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: `Tần suất: ${data.column}`,
+              data: data.values,
+              backgroundColor: "rgba(54, 162, 235, 0.6)"
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true }
+            }
           }
-
-          const dataTable = google.visualization.arrayToDataTable(chartData);
-          const options = {
-            title: `📊 Biểu đồ: ${data.column}`,
-            legend: { position: 'none' },
-            height: 300
-          };
-
-          const chart = new google.visualization.ColumnChart(document.getElementById('myChart'));
-          chart.draw(dataTable, options);
         });
       });
   }
@@ -44,17 +53,21 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `selected_col=${encodeURIComponent(col)}`
     })
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         const box = document.getElementById("describeBox");
         if (data.error) {
           box.innerHTML = `<div class="text-warning">${data.error}</div>`;
-        } else {
-          let html = `<h5>📈 Mô tả thuộc tính: <strong>${data.column}</strong></h5><ul>`;
-          html += data.table_data.map(d => `<li>${d.label}: <strong>${d.value}</strong></li>`).join("");
-          html += "</ul>";
-          box.innerHTML = html;
+          return;
         }
+
+        let html = `<h5>📈 Thống kê mô tả cho: <strong>${data.column}</strong></h5>`;
+        html += `<table class="table table-bordered mt-2"><tbody>`;
+        data.table_data.forEach((item) => {
+          html += `<tr><th>${item.label}</th><td>${item.value}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        box.innerHTML = html;
       });
   }
 });

@@ -56,7 +56,7 @@ def data_view():
     df = load_dataframe(filepath, ext)
     columns = df.columns.tolist()
     numeric_columns = df.select_dtypes(include='number').columns.tolist()
-    return render_template('char.html', columns=columns, numeric_columns=numeric_columns)
+    return render_template('chart.html', columns=columns, numeric_columns=numeric_columns)
 
 
 
