@@ -95,7 +95,7 @@ def api_chart():
     return jsonify({
         'labels': data_count.index.tolist(),
         'values': data_count.values.tolist(),
-        'column': col
+        'column': col[2]
     })
 
 
