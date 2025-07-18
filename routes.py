@@ -54,9 +54,16 @@ def data_view():
     filepath = session.get('filepath')
     ext = session.get('file_ext', 'csv')
     df = load_dataframe(filepath, ext)
-    columns = df.columns.tolist()
-    numeric_columns = df.select_dtypes(include='number').columns.tolist()
-    return render_template('chart.html', columns=columns, numeric_columns=numeric_columns)
+    # Tất cả cột
+    all_columns = df.columns.tolist()
+
+    # Cột số thật sự (loại số và không phải mã hóa phân loại)
+    numeric_columns = []
+    for col in df.select_dtypes(include='number').columns:
+        if df[col].nunique() > 10:  # Giới hạn phân loại: <= 10 giá trị là phân loại
+            numeric_columns.append(col)
+            
+    return render_template('chart.html', columns=all_columns, numeric_columns=numeric_columns)
 
 
 

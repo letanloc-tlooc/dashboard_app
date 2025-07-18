@@ -100,23 +100,53 @@ def api_chart():
 
 
 # ---------- API: Lấy thống kê mô tả cho thuộc tính số ---------- 
+# @app.route('/api/describe', methods=['POST'])
+# def api_describe():
+#     col = request.form.get('selected_col')
+#     filepath = session.get('filepath')
+#     ext = session.get('file_ext', 'csv')
+#     df = load_dataframe(filepath, ext)
+#     if col not in df.columns:
+#         return jsonify({'error': 'Thuộc tính không tồn tại'}), 400
+#     if col not in df.select_dtypes(include='number').columns:
+#         return jsonify({'error': 'Thuộc tính không phải số'}), 400
+#     desc = df[col].describe()
+#     return jsonify({
+#         'column': col,
+#         'table_data': [
+#             {'label': label, 'value': float(value)} for label, value in desc.items()
+#         ]
+#     })
+
 @app.route('/api/describe', methods=['POST'])
 def api_describe():
     col = request.form.get('selected_col')
     filepath = session.get('filepath')
     ext = session.get('file_ext', 'csv')
     df = load_dataframe(filepath, ext)
+
     if col not in df.columns:
         return jsonify({'error': 'Thuộc tính không tồn tại'}), 400
-    if col not in df.select_dtypes(include='number').columns:
+
+    # Kiểm tra có phải số
+    if not pd.api.types.is_numeric_dtype(df[col]):
         return jsonify({'error': 'Thuộc tính không phải số'}), 400
+
+    # Loại bỏ cột có ít giá trị duy nhất (ví dụ <= 10), tức là dữ liệu phân loại mã hóa
+    if df[col].nunique() <= 10:
+        return jsonify({'error': 'Thuộc tính có thể là dữ liệu phân loại mã hóa, không thống kê'}), 400
+
     desc = df[col].describe()
+
     return jsonify({
         'column': col,
         'table_data': [
             {'label': label, 'value': float(value)} for label, value in desc.items()
         ]
     })
+
+
+
 
 # ---------- API: Tương quan ----------
 @app.route('/api/corr')
